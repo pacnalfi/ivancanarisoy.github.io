@@ -1,0 +1,175 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>Projet universitaire avec le centre de recherche CIRAD</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+  </head>
+  <body>
+
+    <!-- Header -->
+    <header id="header">
+      <h1><strong>Projet universitaire avec le centre de recherche CIRAD</strong></h1>
+      <p>Classification d'un grand volume de textes à l'aide de CamemBERT.</p>
+
+      <div id="div-header" class="col-6 col-12-xsmall">
+         <h4>Technologies Utilisées</h4>
+         <ul class="alt">
+            <li>Python</li>
+            <li>Pytorch</li>
+            <li>Transformers</li>
+            <li>Wandb</li>
+            <li>CamemBERT</li>
+         </ul>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <div id="main" class="wrapper">
+      <div class="container">
+        <!-- Content -->
+        <section>
+          <h2>CamemBERT</h2>
+          <h4> Classification binaire des textes lié à la sécurité alimentaire en Afrique de l'Ouest </h4>
+          <p>
+            L'objectif principal était de développer un modèle prédictif capable de détecter les textes pertinents concernant la sécurité alimentaire en Afrique. Cela nécessite une classification binaire predictive des articles qui, permet de comprendre et d'anticiper les dynamiques et les enjeux liés à cette thématique. </p>
+
+
+         <h2>Galerie</h2>
+         <div class="row">
+         <div class="col-6 col-12-small">
+            <a href="#popup1" class="image fit"><img src="images/fulls/2a.png" alt="" /></a>
+            <p class="image-label">Pipeline de l'analyse de pertinence</p>
+         </div>
+         <div class="col-6 col-12-small">
+            <a href="#popup2" class="image fit"><img src="images/fulls/2b.png" alt="" /></a>
+            <p class="image-label">Résultats des tests</p>
+         </div>
+         <div class="col-6 col-12-small">
+            <a href="#popup3" class="image fit"><img src="images/fulls/2c.png" alt="" /></a>
+            <p class="image-label">Fonctionnement de MLM</p>
+         </div>
+         <div class="col-6 col-12-small">
+            <a href="#popup4" class="image fit"><img src="images/fulls/2d.png" alt="" /></a>
+            <p class="image-label">Weights and Biases</p>
+         </div>
+         </div>
+
+         <!-- Popup modals -->
+         <div id="popup1" class="overlay">
+         <div class="popup">
+            <a class="close" href="#">&times;</a>
+            <img src="images/fulls/2a.png" alt="Acceuil" />
+         </div>
+         </div>
+
+         <div id="popup2" class="overlay">
+         <div class="popup">
+            <a class="close" href="#">&times;</a>
+            <img src="images/fulls/2b.png" alt="Graphiques 'Dashboard'" />
+         </div>
+         </div>
+
+         <div id="popup3" class="overlay">
+         <div class="popup">
+            <a class="close" href="#">&times;</a>
+            <img src="images/fulls/2c.png" alt="Scoring Map" />
+         </div>
+         </div>
+
+         <div id="popup4" class="overlay">
+         <div class="popup">
+            <a class="close" href="#">&times;</a>
+            <img src="images/fulls/2d.png" alt="Clustering" />
+         </div>
+         </div>
+
+      <h2>Méthodoligies</h2>
+       <p>
+         Ce projet utilise le modèle d'apprentissage profond BERT, pré-entraîné sur un grand corpus. Pour le spécialiser sur une tâche donnée, un pré-entraînement supplémentaire est nécessaire. Pour cela, de nombreuses techniques ont été utilisées afin de conserver les paramètres et d'obtenir les meilleures performances.
+      </p>
+      <p>
+         Divers articles ont été utilisés dans ce projet, puis labellisés en tenant compte des biais potentiels des sources d'information locales. L'ensemble de données est divisé en parties d'apprentissage, de validation et de test.
+      </p>
+      <p>
+         Le modèle, fine-tuné pour la classification de séquences, utilise également la modélisation de langage masquée comme pré-entraînement pour améliorer sa compréhension des nuances linguistiques. Les résultats montrent une amélioration significative des performances avec le pré-entraînement masqué, validant notre approche en minimisant les faux négatifs et en affinant la détection de pertinence des textes.
+      </p>
+      <p>
+      J'ai également réussi à améliorer les performances du masquage grâce à une technique que j'ai développée, une stratégie modifiée plus ciblée sur les mots significatifs et les mots du lexique de la sécurité alimentaire.
+      </p>
+      <h5>Logique de masquage</h5>
+		<pre><code>
+      class mlm_tokeenization(Dataset):
+         def __init__(self, dataframe, tokenizer: CamembertTokenizer, max_length=512):
+            self.tokenizer = tokenizer
+            self.dataframe = dataframe
+            self.max_length = max_length
+
+         def __len__(self):
+            return len(self.dataframe)
+
+         def __getitem__(self, idx):
+            text = self.dataframe.iloc[idx]['text']
+            inputs = self.tokenizer(text, return_tensors='pt', max_length=self.max_length, truncation=True, padding='max_length', return_offsets_mapping=True)
+            offset_mapping = inputs.pop('offset_mapping').squeeze()
+            masked_input_ids, labels = self.apply_masking_logic(inputs['input_ids'].squeeze(), inputs['attention_mask'].squeeze())
+
+            return {'input_ids': masked_input_ids, 'attention_mask': inputs['attention_mask'].squeeze(), 'labels': labels}
+
+         def apply_masking_logic(self, input_ids, attention_mask):
+            return mask_strategy(input_ids, attention_mask, self.tokenizer)
+
+
+      def mask_strategy(input_ids, attention_mask, tokenizer, masking_ratio=0.15, priority_ratio=0.3):
+         seq_length = attention_mask.sum().item()
+         special_tokens_mask = tokenizer.get_special_tokens_mask(input_ids.tolist(), already_has_special_tokens=True)
+
+         priority_indices = [i for i, token in enumerate(input_ids[:seq_length]) if tokenizer.decode([token], skip_special_tokens=True).strip() in priority_vocab]
+         eligible_tokens = [i for i, token in enumerate(input_ids[:seq_length]) if i not in priority_indices and special_tokens_mask[i] == 0 and tokenizer.decode([token], skip_special_tokens=True).strip() not in exclusion_list]
+
+         total_tokens_to_mask = int(seq_length * masking_ratio)
+         max_priority_tokens = int(total_tokens_to_mask * priority_ratio)
+
+         num_priority_to_mask = min(len(priority_indices), max_priority_tokens)
+         num_regular_to_mask = total_tokens_to_mask - num_priority_to_mask
+
+         priority_masked_indices = np.random.choice(priority_indices, num_priority_to_mask, replace=False) if priority_indices else []
+         regular_masked_indices = np.random.choice(eligible_tokens, num_regular_to_mask, replace=False) if eligible_tokens else []
+
+         indices_to_mask = np.concatenate((priority_masked_indices, regular_masked_indices)).astype(int).tolist()
+
+         labels = -100 * torch.ones_like(input_ids)
+
+         for idx in indices_to_mask:
+            labels[idx] = input_ids[idx]
+            input_ids[idx] = tokenizer.mask_token_id
+
+         return input_ids, labels
+      </code></pre>
+      <p>
+         Premièrement, on défini une liste d'exclusion comprenant des mots de liaison et des caractères spéciaux. Ensuite, une liste de mots prioritaires à masquer, sélectionnés à partir du lexique fourni. Pour le masquage, nous maintenons le ratio de 15% de tokens à masquer. Nous fixons une limite de 30% parmi ces 15% pour masquer les mots prioritaires issus du lexique, à condition qu'ils soient présents dans le texte. Ce choix a été fait pour éviter un surapprentissage potentiel tout en ne masquant que 30% au maximum des tokens du lexique. La création d'une liste d'exclusion était plus facile à implémenter que de cibler des mots de liaison par un autre outil ou une technique de TALN.
+      </p>
+      <p>
+         Les évaluations finales utilisent des métriques standards telles que l'accuracy, la précision et le rappel, avec une attention particulière portée au rappel pour minimiser les erreurs coûteuses dans l'identification des textes pertinents.
+      </p>
+
+        </section>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="footer">
+       <p>
+        <a href="index.html" class="button">Retour</a>
+      </p>
+    </footer>
+
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
+
+  </body>
+</html>
