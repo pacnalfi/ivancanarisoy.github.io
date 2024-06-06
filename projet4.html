@@ -1,38 +1,135 @@
 <!DOCTYPE HTML>
 <html>
   <head>
-    <title></title>
+    <title>NLP with Disaster Tweets</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="stylesheet" href="assets/css/main.css" />
   </head>
   <body>
-
     <!-- Header -->
     <header id="header">
-      <h1><strong>Compétition sur la plateforme Kaggle</strong></h1>
-      <p>Projet "compétition" sur la prédiction des sujets des tweets à l'aide d'un modele d'apprentissage profond.</p>
-
+      <h1><strong>NLP with Disaster Tweets</strong></h1>
+      <p>Projet "compétition" sur la prédiction des sujets des tweets à l'aide d'un modèle d'apprentissage profond.</p>
       <div id="div-header" class="col-6 col-12-xsmall">
-         <h4>Technologies Utilisées</h4>
-         <ul class="alt">
-            <li>Python</li>
-            <li>Pytorch</li>
-            <li>Transformers</li>
-            <li>Wandb</li>
-            <li>BERT</li>
-         </ul>
-         </ul>
+        <h4>Technologies Utilisées</h4>
+        <ul class="alt">
+          <li>Python</li>
+          <li>Pytorch</li>
+          <li>Transformers</li>
+          <li>Wandb</li>
+          <li>BERT</li>
+        </ul>
       </div>
+    <footer id="footer">
+       <p>
+        <a href="index.html" class="button">Retour</a>
+      </p>
+    </footer>
     </header>
 
     <!-- Main -->
     <div id="main" class="wrapper">
-      <div class="container">
+ 
         <!-- Content -->
-        <section>
-          <h2>BERT</h2>
-          <h4>🛠️ En cours de développement</h4>
+        <section id="one">
+          
+        <button id="openPdfModal" class="button primary">Ouvrir le PDF</button>
+        <div id="pdfModal" class="modal">
+          <div class="modal-content">
+            <span class="close">&times;</span>
+            <embed src="pdf/Memoire_final_compressed.pdf" width="100%" height="750px">
+          </div>
+        </div>
+        </section>
+        
 
+        <section id="two">
+          <h2>Introduction</h2>
+          <p>Le traitement automatique du langage naturel (TALN) connaît une évolution rapide depuis l'introduction de l'apprentissage supervisé et semi-supervisé au début du XXIe siècle. Cette année, j'ai eu l'opportunité d'enrichir mon expérience grâce à un projet universitaire, explorant le TALN à travers une compétition Kaggle.</p>
+
+
+
+          <h2>Méthodologie</h2>
+          <p>Pour le développement de ce projet, j'ai utilisé des outils tels que Hugging Face Transformers et PyTorch. Le préentraînement par masquage (MLM) a été une technique clé pour améliorer les performances du modèle BERT-base.</p>
+
+
+          <h3>Transfer Learning et le Masked Language Modeling (MLM)</h3>
+          <p>Dans cette phase complémentaire, j’utilise BertForMaskedLM, une couche spécifique conçue pour le préentraînement par masquage, que j’ajoute au modèle BERT-base. Cette approche consiste à masquer aléatoirement des mots dans les phrases, et le modèle doit ensuite prédire ces mots manquants en se basant sur les mots et le contexte du texte. Implicitement, nous faisons apprendre au modèle ce qu’est un tweet, en termes de langage et de style. Après cette étape, je devais effectuer le "transfert" de l’apprentissage à l’étape de fine-tuning en changeant cette dernière couche.</p>
+          <p>Le masquage est réalisé lors de la phase de tokenisation, où j’ai introduit un taux de masquage de 30% du texte total. Pour optimiser le processus, j’ai également créé une liste de mots (stop words) [12] courants en anglais. Cela permet d’éviter le masquage de mots ou de caractères peu significatifs et encourage le modèle à effectuer un apprentissage plus efficace.</p>
+   
+
+          <h3>Optimisation du modèle</h3>
+          <p>L’optimisation du modèle est réalisée avec AdamW [13], un optimiseur choisi par défaut lors de l’utilisation de la bibliothèque transformers. Il est crucial de comprendre comment cet algorithme ajuste les paramètres et les poids pour pouvoir interpréter les résultats ultérieurs et la sélection des hyperparamètres.</p>
+          <p>AdamW est une adaptation de l’optimiseur Adam avec le weight-decay. Lorsque Adam est appliqué sur une fonction de perte f plus une régularisation L2, les poids qui ont tendance à avoir de grands gradients dans f ne sont pas autant régularisés qu’ils le seraient avec un weight decay découplé, puisque le gradient du régularisateur est également affecté par l’échelle des gradients de f. En revanche, dans notre cas, le weight decay découplé régularise tous les poids au même taux λ , permettant ainsi de régulariser de manière implicite le modèle en imposant une pénalité plus importante aux poids plus élevés, ce qui conduit à une meilleure généralisation que la régularisation L2. AdamW attribue un taux d’apprentissage individuel à chaque paramètre, prenant des pas plus petits là où la pente de la fonction de perte est abrupte, et des pas plus grands là où le gradient est plus plat. Cette dissociation empêche également la réduction des taux d’apprentissage qui se produit avec Adam traditionnel lorsque le weight decay est inclus.</p>
+
+          <h3>Réduction de la taille de lot</h3>
+          <p>Cependant, l’obtention de résultats si similaires après ces trois tests utilisant des modèles différents a attiré mon attention, même si l’ordre des performances correspond à mes attentes initiales.</p>
+          <p>Par conséquent, j’ai voulu tester une hypothèse qui m’est venue à l’esprit : utiliser une taille de lot beaucoup plus petite permettrait d’atteindre une meilleure généralisation, en raison des mises à jour plus fréquentes des poids et des paramètres, ce qui conduirait à une pénalisation plus sévère du modèle.</p>
+          <p>Ainsi, j’ai repris mon modèle pré-entraîné avec la phase de masquage, et j’ai procédé au fine-tuning. Malgré l’instabilité observée avec de petits batch sizes, notamment une augmentation de la loss de training dans certaines époques, cette fois-ci, un batch size de 8 a été fixé, avec le même learning rate de 1e-5, mais avec un warmup_steps de 100 et un weight_decay de 0.01.</p>
+          <p>Le modèle a présenté une loss de validation constamment croissante, mais a atteint son accuracy maximale lors de la deuxième époque avec une accuracy de 0.849602 et un F1-score de 0.809174</p>
+ 
+          <h3>Comparaison et Analyses</h3>
+          <p>Ensuite, sur les prédictions soumises sur Kaggle, le modèle a réussi à atteindre un score de 0.84308, ce qui était bien meilleur que tous les résultats précédents. Ce résultat peut probablement s’expliquer par le fait que la réduction de la taille du lot "aplatit" la surface de la fonction de perte, permettant ainsi au modèle de sortir des minimums locaux atteints avec une taille de lot de 32 et de trouver une solution plus optimale contribuant à une meilleure généralisation.</p>
+          <table>
+            <caption>Table 3.2 – Scores Kaggle des différents modèles *bs – batch size</caption>
+            <thead>
+              <tr>
+                <th>Modèle</th>
+                <th>Score Kaggle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>BERT-base</td>
+                <td>0.83266</td>
+              </tr>
+              <tr>
+                <td>BERT+MLM</td>
+                <td>0.83542</td>
+              </tr>
+              <tr>
+                <td>BERTweet</td>
+                <td>0.83757</td>
+              </tr>
+              <tr>
+                <td>BERT+MLM bs : 8</td>
+                <td>0.84308</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </div>
+            <!-- Footer -->
+
+
+        <script>
+          // Get the modal
+          var modal = document.getElementById('pdfModal');
+
+          // Get the button that opens the modal
+          var btn = document.getElementById('openPdfModal');
+
+          // Get the <span> element that closes the modal
+          var span = document.getElementsByClassName('close')[0];
+
+          // When the user clicks the button, open the modal 
+          btn.onclick = function() {
+            modal.style.display = "block";
+          }
+
+          // When the user clicks on <span> (x), close the modal
+          span.onclick = function() {
+            modal.style.display = "none";
+          }
+          // When the user clicks anywhere outside of the modal, close it
+          window.onclick = function(event) {
+            if (event.target == modal) {
+              modal.style.display = "none";
+            }
+          }
+        </script>
   </body>
 </html>
